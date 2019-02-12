@@ -1,0 +1,12 @@
+{
+  "name": "node-china-region-spider",
+  "version": "1.0.0",
+  "description": "中国统计局省市区镇（街道）采集器",
+  "main": "index.js",
+  "repository": "git@github.com:tsball/node-china-region-spider.git",
+  "author": "tsball <tsball@qq.com>",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^1.12.2"
+  }
+}
