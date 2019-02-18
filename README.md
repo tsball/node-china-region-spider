@@ -1,9 +1,11 @@
 # 中国统计局省市区镇（街道）采集器
 ## 1. 技术构成
 推荐使用 yarn 安装 js lib。  
+因为默认的源安装 puppeteer 经常失败，所以增加 .npmrc 修改了源为（https://npm.taobao.org/mirrors）
+
+主要依赖的库：  
 - 数据采集： puppeteer  
-  因为 cn 经常安装失败，推荐使用指定源进行安装： PUPPETEER_DOWNLOAD_HOST=https://storage.googleapis.com.cnpmjs.org npm i puppeteer  
-  使用教程：https://github.com/GoogleChrome/puppeteer  
+  如果还安装失败，可以通过设置环境变量的方式安装： PUPPETEER_DOWNLOAD_HOST=https://storage.googleapis.com.cnpmjs.org npm i puppeteer 
 - 数据存储： sqlite & sequelize orm  
   参考文档：https://github.com/demopark/sequelize-docs-Zh-CN/blob/master/getting-started.md
 

@@ -1,5 +1,7 @@
 const puppeteer = require('puppeteer')
 const program = require('commander')
+
+// database models
 const Province = require('./models/province.js')
 
 program
