@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer')
 const program = require('commander')
+const Province = require('./models/province.js')
 
 program
   .version('1.0.0')
@@ -25,6 +26,7 @@ async function run() {
   await page.goto('http://www.stats.gov.cn/tjsj/tjbz/tjyqhdmhcxhfdm/2016/index.html', {waitUntil: 'load', timeout: 0})
   
   const provinces = await getProvinces(page)
+  saveProvinces(provinces)
   console.log(provinces.map(province => province.name))
 
   let cities = []
@@ -180,7 +182,13 @@ async function mergePromises(promises) {
  * @param  {provices} 省份列表
  */
 function saveProvinces(provinces) {
-  
+  for (province of provinces) {
+    province = Province.create({ 
+      name: province.name, 
+      code: province.code, 
+      url: province.url 
+    })
+  }
 }
 
 run()
