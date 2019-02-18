@@ -3,19 +3,24 @@ const program = require('commander')
 
 // database models
 const Province = require('./models/province.js')
+const City = require('./models/city.js')
 
 program
   .version('1.0.0')
   .usage('[options] <file ...>')
   .option('-h, --headless <boolean>', 'Headless', /^(y|n)$/i, 'n')
   .option('-d, --depth <depth>', 'Depth of data', /^(province|city|district|town)$/i, 'city')
-  .option('-y, --year <n>', 'Data of specified year', parseInt)
+  .option('-y, --year <n>', 'Data of specified year', parseInt, 2016)
   .parse(process.argv)
 
 console.log("Headless is: " + program.headless)
 console.log("Depth is: " + program.depth)
 console.log("Year is: " + program.year)
 const headless = program.headless === 'y'
+const year = program.year
+
+// 并发数，同时打开多个tabs
+const concurrency = 3
 
 async function run() {
   const browser = await puppeteer.launch({
@@ -27,19 +32,20 @@ async function run() {
 
   await page.goto('http://www.stats.gov.cn/tjsj/tjbz/tjyqhdmhcxhfdm/2016/index.html', {waitUntil: 'load', timeout: 0})
   
+  // for province
   const provinces = await getProvinces(page)
-  saveProvinces(provinces)
-  console.log(provinces.map(province => province.name))
-
+  await saveProvinces(provinces)
+  
+  // for city
+  // 遍历没有完成的省份，获取对应的城市列表
+  const provincesWithoutFullCities = await getProvincesWithoutFullCities(year)
   let cities = []
-  for (let i = 0; i < provinces.length; i += 3) {
-    // 同时打开多个tabs
-    const multiTabsCount = 3
+  for (let i = 0; i < provincesWithoutFullCities.length; i += 3) {
     let promises = []
-    for (let j = 0; j < multiTabsCount && i+j < provinces.length; j++) {
-      let province = provinces[i+j]
-      console.log("(" + (i + j + 1) + "/" + provinces.length + ") Start to get cities of province " + province.name)
-      promises.push(getCities(browser, province))
+    for (let j = 0; j < concurrency && i+j < provincesWithoutFullCities.length; j++) {
+      let province = provincesWithoutFullCities[i+j]
+      console.log("(" + (i + j + 1) + "/" + provincesWithoutFullCities.length + ") Start to get cities of province " + province.name)
+      promises.push(getAndSaveProvinceCities(browser, year, province))
     }
     const values = await mergePromises(promises)
     page.waitFor(500) // 等待，避免访问频繁被拦截
@@ -67,8 +73,6 @@ async function run() {
   }
 
   console.log(towns)
-
-  saveProvinces(provinces)
 }
 
 /**
@@ -119,6 +123,18 @@ async function getCities(browser, province) {
   page.close()
   console.log("Cities of " + province.name + " is " + cities.map(city => city.name).join(' , '))
   return cities
+}
+
+/**
+ * 获取并保存指定省份的城市列表
+ * @param {*} browser 
+ * @param {*} year 
+ * @param {*} province 
+ */
+async function getAndSaveProvinceCities(browser, year, province) {
+  const cities = await getCities(browser, province)
+  await updateProvinceCitiesCount(year, province.code, cities.length)
+  await saveProvinceCities(year, province, cities)
 }
 
 /**
@@ -180,16 +196,104 @@ async function mergePromises(promises) {
 }
 
 /**
- * 保存信息到数据库
+ * 获取城市列表不完整的所有省份信息
+ * @param {year} 对应的年份
+ */
+async function getProvincesWithoutFullCities(year) {
+  provinces = await Province.findAll({
+    where: {
+      year: year,
+      citiesCount: null
+    }
+  })
+  return provinces
+}
+
+/**
+ * 指定省份的城市信息是否都完整
+ * @param {provinceCode} 省份的编号
+ * @return {boolean}
+ */
+function isProvinceWithFullCities(provinceCode) {
+  province = Province.findOne({
+    where: {
+      code: proviceCode,
+      citiesCount: {
+        [Op.ne]: null
+      }
+    }
+  })
+  console.log(province)
+  return province !== null
+}
+
+/**
+ * 当前记录是否存在
+ * @param {Model} model 
+ * @param {Number} year 
+ * @param {String} code 
+ * @return {Boolean}
+ */
+async function isRegionExist(model, year, code) {
+  region = await model.findOne({
+    where: {
+      year: year,
+      code: code
+    }
+  })
+  return region !== null
+}
+
+/**
+ * 保存信息到数据库 （如果存在，则不重复保存）
  * @param  {provices} 省份列表
  */
-function saveProvinces(provinces) {
+async function saveProvinces(provinces) {
   for (province of provinces) {
-    province = Province.create({ 
-      name: province.name, 
-      code: province.code, 
-      url: province.url 
-    })
+    if (!await isRegionExist(Province, year, province.code)) {
+      await Province.create({ 
+        year: year,
+        name: province.name, 
+        code: province.code, 
+        url: province.url 
+      })
+    }
+  }
+}
+
+/**
+ * 更新指定省份的对应城市数量（获取城市列表完成后执行）
+ * @param {*} year 
+ * @param {*} provinceCode 
+ * @param {*} citiesCount 
+ */
+async function updateProvinceCitiesCount(year, provinceCode, citiesCount) {
+  await Province.update({
+    citiesCount: citiesCount,
+  }, {
+    where: {
+      year: year,
+      code: provinceCode
+    }
+  })
+}
+
+/**
+ * 保存指定省份的城市信息（只更新不存在的城市列表信息）
+ * @param {Number} year 
+ * @param {Province} province 
+ * @param {Array} cities 
+ */
+async function saveProvinceCities(year, province, cities) {
+  for (city of cities) {
+    if (!await isRegionExist(City, year, city.code)) {
+      await City.create({ 
+        year: year,
+        name: city.name, 
+        code: city.code, 
+        url: city.url 
+      })
+    }
   }
 }
 
