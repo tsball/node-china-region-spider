@@ -133,8 +133,8 @@ async function getCities(browser, province) {
  */
 async function getAndSaveProvinceCities(browser, year, province) {
   const cities = await getCities(browser, province)
-  await updateProvinceCitiesCount(year, province.code, cities.length)
   await saveProvinceCities(year, province, cities)
+  await updateProvinceCitiesCount(year, province.code, cities.length)
 }
 
 /**
@@ -291,7 +291,8 @@ async function saveProvinceCities(year, province, cities) {
         year: year,
         name: city.name, 
         code: city.code, 
-        url: city.url 
+        url: city.url,
+        provinceId: province.id
       })
     }
   }

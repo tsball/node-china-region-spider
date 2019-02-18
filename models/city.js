@@ -14,6 +14,9 @@ const City = sequelize.define('cities', {
   url: {
     type: Sequelize.STRING
   },
+  provinceId: {
+    type: Sequelize.INTEGER
+  },
   districtsCount: {
     type: Sequelize.INTEGER
   }
