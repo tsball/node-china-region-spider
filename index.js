@@ -1,8 +1,22 @@
 const puppeteer = require('puppeteer')
+const program = require('commander')
+
+program
+  .version('1.0.0')
+  .usage('[options] <file ...>')
+  .option('-h, --headless <boolean>', 'Headless', /^(y|n)$/i, 'n')
+  .option('-d, --depth <depth>', 'Depth of data', /^(province|city|district|town)$/i, 'city')
+  .option('-y, --year <n>', 'Data of specified year', parseInt)
+  .parse(process.argv)
+
+console.log("Headless is: " + program.headless)
+console.log("Depth is: " + program.depth)
+console.log("Year is: " + program.year)
+const headless = program.headless === 'y'
 
 async function run() {
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: headless,
     devtools: true
   })
 
@@ -12,13 +26,21 @@ async function run() {
   
   const provinces = await getProvinces(page)
   console.log(provinces.map(province => province.name))
-  let provinceUrls = provinces.map(province => province.url)
 
   let cities = []
-  for (const url of provinceUrls) {
-    await page.goto(url, {waitUntil: 'load', timeout: 0})
-    const provinceCities = await getCities(page)
-    cities = cities.concat(provinceCities)
+  for (let i = 0; i < provinces.length; i += 3) {
+    // 同时打开多个tabs
+    const multiTabsCount = 3
+    let promises = []
+    for (let j = 0; j < multiTabsCount && i+j < provinces.length; j++) {
+      let province = provinces[i+j]
+      console.log("(" + (i + j + 1) + "/" + provinces.length + ") Start to get cities of province " + province.name)
+      promises.push(getCities(browser, province))
+    }
+    const values = await mergePromises(promises)
+    page.waitFor(500) // 等待，避免访问频繁被拦截
+
+    cities = cities.concat(values)
   }
   console.log(cities)
 
@@ -68,10 +90,13 @@ async function getProvinces(page) {
 
 /**
  * 获取城市信息
- * @param  {page} 城市所在的页面
+ * @param  {browser} 浏览器
+ * @param  {province} 省份信息
  * @return {cities} 所有城市  
  */
-async function getCities(page) {
+async function getCities(browser, province) {
+  const page = await browser.newPage()
+  await page.goto(province.url, { waitUntil: 'load', timeout: 0 })
   const cities = await page.evaluate(() => {
     // 城市页面里一层tr含有code、name两个a标签
     const cityTrElements = document.querySelectorAll('.citytr')
@@ -87,6 +112,8 @@ async function getCities(page) {
     return provinceCities
   })
   
+  page.close()
+  console.log("Cities of " + province.name + " is " + cities.map(city => city.name).join(' , '))
   return cities
 }
 
@@ -141,6 +168,11 @@ async function getTowns(page) {
   })
   
   return towns
+}
+
+async function mergePromises(promises) {
+  const results = await Promise.all(promises)
+  return Array.prototype.concat.apply([], results)
 }
 
 /**
