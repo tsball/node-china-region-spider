@@ -11,6 +11,7 @@ program
   .option('-h, --headless <boolean>', 'Headless', /^(y|n)$/i, 'n')
   .option('-d, --depth <depth>', 'Depth of data', /^(province|city|district|town)$/i, 'city')
   .option('-y, --year <n>', 'Data of specified year', parseInt, 2016)
+  .option('-c, --concurrency <n>', '并发数', parseInt, 3)
   .parse(process.argv)
 
 console.log("Headless is: " + program.headless)
@@ -20,7 +21,7 @@ const headless = program.headless === 'y'
 const year = program.year
 
 // 并发数，同时打开多个tabs
-const concurrency = 3
+const concurrency = program.concurrency
 
 async function run() {
   const browser = await puppeteer.launch({
@@ -40,7 +41,7 @@ async function run() {
   // 遍历没有完成的省份，获取对应的城市列表
   const provincesWithoutFullCities = await getProvincesWithoutFullCities(year)
   let cities = []
-  for (let i = 0; i < provincesWithoutFullCities.length; i += 3) {
+  for (let i = 0; i < provincesWithoutFullCities.length; i += concurrency) {
     let promises = []
     for (let j = 0; j < concurrency && i+j < provincesWithoutFullCities.length; j++) {
       let province = provincesWithoutFullCities[i+j]
@@ -249,7 +250,7 @@ async function isRegionExist(model, year, code) {
  * @param  {provices} 省份列表
  */
 async function saveProvinces(provinces) {
-  for (province of provinces) {
+  for (const province of provinces) {
     if (!await isRegionExist(Province, year, province.code)) {
       await Province.create({ 
         year: year,
@@ -285,8 +286,9 @@ async function updateProvinceCitiesCount(year, provinceCode, citiesCount) {
  * @param {Array} cities 
  */
 async function saveProvinceCities(year, province, cities) {
-  for (city of cities) {
+  for await (const city of cities) {
     if (!await isRegionExist(City, year, city.code)) {
+      let isCityInThisProvince = cities.some(item => item.code === city.code)
       await City.create({ 
         year: year,
         name: city.name, 
