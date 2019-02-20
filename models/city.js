@@ -3,13 +3,15 @@ const Sequelize = require('sequelize')
 
 const City = sequelize.define('cities', {
   year: {
-    type: Sequelize.INTEGER
+    type: Sequelize.INTEGER,
+    unique: 'compositeIndex'
   },
   name: {
     type: Sequelize.STRING
   },
   code: {
-    type: Sequelize.STRING
+    type: Sequelize.STRING,
+    unique: 'compositeIndex'
   },
   url: {
     type: Sequelize.STRING

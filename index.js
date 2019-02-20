@@ -4,14 +4,23 @@ const program = require('commander')
 // database models
 const Province = require('./models/province.js')
 const City = require('./models/city.js')
+const District = require('./models/district.js')
+const Town = require('./models/town.js')
+
+const depthProvince = 1
+const depthCity = 2
+const depthDistrict = 3
+const depthTown = 4
 
 program
   .version('1.0.0')
   .usage('[options] <file ...>')
   .option('-h, --headless <boolean>', 'Headless', /^(y|n)$/i, 'n')
-  .option('-d, --depth <depth>', 'Depth of data', /^(province|city|district|town)$/i, 'city')
+  .option('-d, --depth <n>', 'Depth of data', parseInt, depthTown)
   .option('-y, --year <n>', 'Data of specified year', parseInt, 2016)
   .option('-c, --concurrency <n>', '并发数', parseInt, 3)
+  .option('-i, --interval <n>', '采集休息的间隙', parseInt, 500)
+  .option('-t, --timeout <n>', '超时时间', parseInt, 3000)
   .parse(process.argv)
 
 console.log("Headless is: " + program.headless)
@@ -19,6 +28,9 @@ console.log("Depth is: " + program.depth)
 console.log("Year is: " + program.year)
 const headless = program.headless === 'y'
 const year = program.year
+const interval = program.interval
+const timeout = program.timeout
+const depth = program.depth
 
 // 并发数，同时打开多个tabs
 const concurrency = program.concurrency
@@ -29,51 +41,121 @@ async function run() {
     devtools: true
   })
 
-  const page = await browser.newPage()
+  let page = await browser.newPage()
 
-  await openPageWithAutoRetry(page, 'http://localhost:3000/admins/sign_in')
+  if (canReachDepth(depthProvince, depth)) {
+    await initProvinces(page)
+  }
+
+  if (canReachDepth(depthCity, depth)) {
+    await initCities(page, browser)
+  }
+
+  if (canReachDepth(depthDistrict, depth)) {
+    await initDistricts(page, browser)
+  }
+
+  if (canReachDepth(depthTown, depth)) {
+    await initTowns(page, browser)
+  }
   
-  // for province
+}
+
+/**
+ * 判断是否在该深度里
+ * @param {Number} requiredDepth 需要的深度
+ * @param {Number} targetDepth 目标深度
+ */
+function canReachDepth(requiredDepth, targetDepth) {
+  return targetDepth >= requiredDepth
+}
+
+async function initProvinces(page) {
+  await gotoPageWithAutoRetry(page, 'http://www.stats.gov.cn/tjsj/tjbz/tjyqhdmhcxhfdm/'+ year +'/index.html')
+  setPageProps(page)
   const provinces = await getProvinces(page)
   await saveProvinces(provinces)
-  
-  // for city
-  // 遍历没有完成的省份，获取对应的城市列表
+}
+
+async function initCities(page, browser) {
   const provincesWithoutFullCities = await getProvincesWithoutFullCities(year)
-  let cities = []
   for (let i = 0; i < provincesWithoutFullCities.length; i += concurrency) {
-    let promises = []
+    let provincePromises = []
     for (let j = 0; j < concurrency && i+j < provincesWithoutFullCities.length; j++) {
       let province = provincesWithoutFullCities[i+j]
       console.log("(" + (i + j + 1) + "/" + provincesWithoutFullCities.length + ") Start to get cities of province " + province.name)
-      promises.push(getAndSaveProvinceCities(browser, year, province))
+      provincePromises.push(getAndSaveProvinceCities(browser, year, province))
     }
-    const values = await mergePromises(promises)
-    page.waitFor(500) // 等待，避免访问频繁被拦截
-
-    cities = cities.concat(values)
+    await mergePromises(provincePromises)
+    page.waitFor(interval) // 等待，避免访问频繁被拦截
   }
-  console.log(cities)
+}
 
-  let districts = []
-  let cityUrls = cities.map(city => city.url)
-  for (const url of cityUrls) {
-    await page.goto(url, {waitUntil: 'load', timeout: 0})
-    const cityDistricts = await getDistricts(page)
-    districts = districts.concat(cityDistricts)
-  }
-
-  console.log(districts)
-
-  let towns = []
-  let districtUrls = districts.map(district => district.url)
-  for (const url of districtUrls) {
-    await page.goto(url, {waitUntil: 'load', timeout: 0})
-    const districtTowns = await getTowns(page)
-    towns = towns.concat(districtTowns)
+async function initDistricts(page, browser) {
+  const citiesWithoutFullDistricts = await getCitiesWithoutFullDistricts(year)
+  for (let i = 0; i < citiesWithoutFullDistricts.length; i += 3) {
+    let cityPromises = []
+    for (let j = 0; j < concurrency && i+j < citiesWithoutFullDistricts.length; j++) {
+      let city = citiesWithoutFullDistricts[i+j]
+      console.log("(" + (i + j + 1) + "/" + citiesWithoutFullDistricts.length + ") Start to get districts of city " + city.name)
+      cityPromises.push(getAndSaveCitiyDistricts(browser, year, city))
+    }
+    await mergePromises(cityPromises)
+    page.waitFor(interval) // 等待，避免访问频繁被拦截
   }
 
-  console.log(towns)
+  return districts
+}
+
+async function initTowns(page, browser) {
+  const districtsWithoutFulltowns = await getDistrictsWithoutFullTowns(year)
+  for (let i = 0; i < districtsWithoutFulltowns.length; i += 3) {
+    let districtPromises = []
+    for (let j = 0; j < concurrency && i+j < districtsWithoutFulltowns.length; j++) {
+      let district = districtsWithoutFulltowns[i+j]
+      console.log("(" + (i + j + 1) + "/" + districtsWithoutFulltowns.length + ") Start to get towns of district " + district.name)
+      districtPromises.push(getAndSaveDistrictTowns(browser, year, district))
+    }
+    await mergePromises(districtPromises)
+    page.waitFor(interval) // 等待，避免访问频繁被拦截
+  }
+}
+
+
+/**
+ * 获取并保存指定省份的城市列表
+ * @param {*} browser 
+ * @param {*} year 
+ * @param {*} province 
+ */
+async function getAndSaveProvinceCities(browser, year, province) {
+  const cities = await getCities(browser, province)
+  await saveProvinceCities(year, province, cities)
+  await updateProvinceCitiesCount(year, province.code, cities.length)
+}
+
+/**
+ * 获取并保存指定城市的区列表
+ * @param {*} browser 
+ * @param {*} year 
+ * @param {*} city 
+ */
+async function getAndSaveCitiyDistricts(browser, year, city) {
+  const districts = await getDistricts(browser, city)
+  await saveCityDistricts(year, city, districts)
+  await updateCityDistrictsCount(year, city.code, districts.length)
+}
+
+/**
+ * 获取并保存指定区的镇列表
+ * @param {*} browser 
+ * @param {*} year
+ * @param {*} district
+ */
+async function getAndSaveDistrictTowns(browser, year, district) {
+  const towns = await getTowns(browser, district)
+  await saveDistrictTowns(year, district, towns)
+  await updateDistrictTownsCount(year, district.code, towns.length)
 }
 
 /**
@@ -87,10 +169,10 @@ async function getProvinces(page) {
       let province = {}
       // url sample: http://www.stats.gov.cn/tjsj/tjbz/tjyqhdmhcxhfdm/2016/65.html
       const urlParts = provinceLinkElem.href.split('/')
-
+      const codeHead = urlParts[urlParts.length - 1].split('.')[0]
       province.url = provinceLinkElem.href
       province.name = provinceLinkElem.innerText
-      province.code = urlParts[urlParts.length - 1].split('.')[0]
+      province.code = codeHead+'0000000000'
       return province
     }) 
   })
@@ -104,8 +186,9 @@ async function getProvinces(page) {
  * @return {cities} 所有城市  
  */
 async function getCities(browser, province) {
-  const page = await browser.newPage()
-  await page.goto(province.url, { waitUntil: 'load', timeout: 0 })
+  let page = await browser.newPage()
+  setPageProps(page)
+  await gotoPageWithAutoRetry(page, province.url)
   const cities = await page.evaluate(() => {
     // 城市页面里一层tr含有code、name两个a标签
     const cityTrElements = document.querySelectorAll('.citytr')
@@ -127,54 +210,51 @@ async function getCities(browser, province) {
 }
 
 /**
- * 获取并保存指定省份的城市列表
- * @param {*} browser 
- * @param {*} year 
- * @param {*} province 
- */
-async function getAndSaveProvinceCities(browser, year, province) {
-  const cities = await getCities(browser, province)
-  await saveProvinceCities(year, province, cities)
-  await updateProvinceCitiesCount(year, province.code, cities.length)
-}
-
-/**
  * 获取区信息
- * @param  {page} 区所在的页面
+ * @param  {browser} 浏览器
+ * @param  {city} 城市信息
  * @return {districts} 所有区  
  */
-async function getDistricts(page) {
+async function getDistricts(browser, city) {
+  let page = await browser.newPage()
+  setPageProps(page)
+  await gotoPageWithAutoRetry(page, city.url)
   const districts = await page.evaluate(() => {
     // 区页面里一层tr含有code、name两个a标签
     const districtTrElements = document.querySelectorAll('.countytr')
 
     const cityDistricts = Array.prototype.map.call(districtTrElements, districtTrElement => { 
-      const districtLinkElements = districtTrElement.querySelectorAll('a')
-      if(districtLinkElements.length > 0){
-        let district = {}
-        district.code = districtLinkElements[0].innerText
-        district.name = districtLinkElements[1].innerText
-        district.url = districtLinkElements[1].href
-        return district
-      }
-      
+      const districtTdElements = districtTrElement.querySelectorAll('td')
+      let district = {}
+      let linkElement = districtTdElements[1].querySelector('a')
+      let url = linkElement==null ? null : linkElement.href
+      district.code = districtTdElements[0].innerText
+      district.name = districtTdElements[1].innerText
+      district.url = url
+
+      return district
     })
-    return cityDistricts.filter(district => district != null)
+    return cityDistricts.filter(district => district.name != '市辖区')
   })
   
+  page.close()
+  console.log("Districts of " + city.name + " is " + districts.map(district => district.name).join(' , '))
   return districts
 }
 
 /**
  * 获取镇（街道）信息
- * @param  {page} 镇所在的页面
+ * @param  {browser} 浏览器
+ * @param  {district} 区信息
  * @return {towns} 所有镇 
  */
-async function getTowns(page) {
+async function getTowns(browser, district) {
+  let page = await browser.newPage()
+  setPageProps(page)
+  await gotoPageWithAutoRetry(page, district.url)
   const towns = await page.evaluate(() => {
     // 镇页面里一层tr含有code、name两个a标签
     const townTrElements = document.querySelectorAll('.towntr')
-
     const districtTowns = Array.prototype.map.call(townTrElements, townTrElement => { 
       const townLinkElements = townTrElement.querySelectorAll('a')
       if(townLinkElements.length > 0){
@@ -188,6 +268,8 @@ async function getTowns(page) {
     return districtTowns
   })
   
+  page.close()
+  console.log("Towns of " + district.name + " is " + towns.map(town => town.name).join(' , '))
   return towns
 }
 
@@ -208,6 +290,34 @@ async function getProvincesWithoutFullCities(year) {
     }
   })
   return provinces
+}
+
+/**
+ * 获取区列表不完整的所有城市信息
+ * @param {year} 对应的年份
+ */
+async function getCitiesWithoutFullDistricts(year) {
+  cities = await City.findAll({
+    where: {
+      year: year,
+      districtsCount: null
+    }
+  })
+  return cities
+}
+
+/**
+ * 获取镇列表不完整的所有区信息
+ * @param {year} provinceCode 
+ */
+async function getDistrictsWithoutFullTowns(year) {
+  districts = await District.findAll({
+    where : {
+      year: year,
+      townsCount: null
+    }
+  })
+  return districts.filter(district => district.url != null)
 }
 
 /**
@@ -280,6 +390,60 @@ async function updateProvinceCitiesCount(year, provinceCode, citiesCount) {
 }
 
 /**
+ * 更新指定城市的对应区数量（获取区列表后执行）
+ * @param {*} year 
+ * @param {*} cityCode 
+ * @param {*} districtsCount 
+ */
+async function updateCityDistrictsCount(year, cityCode, districtsCount) {
+  await City.update({
+    districtsCount: districtsCount,
+  }, {
+    where: {
+      year: year,
+      code: cityCode
+    }
+  })
+}
+
+/**
+ * 更新指定区的对应镇数量（获取镇列表后执行）
+ * @param {*} year 
+ * @param {*} districtCode 
+ * @param {*} townsCount 
+ */
+async function updateDistrictTownsCount(year, districtCode, townsCount) {
+  await District.update({
+    townsCount: townsCount,
+  }, {
+    where: {
+      year: year,
+      code: districtCode
+    }
+  })
+}
+
+/**
+ * 打开页面，并且失败自动重试
+ * @param {*} page 
+ * @param {*} url 
+ * @param {*} try_times 
+ */
+async function gotoPageWithAutoRetry(page, url, try_times = 0) {
+  try {
+    await page.goto(url, {waitUntil: 'domcontentloaded', timeout: timeout})
+  } catch (ex) {
+    if (try_times < 3) {
+      try_times += 1
+      page.waitFor(1000)
+      console.warn("Retry to open page: " + url)
+      return gotoPageWithAutoRetry(page, url, try_times)
+    }
+    throw ex
+  }
+}
+
+/**
  * 保存指定省份的城市信息（只更新不存在的城市列表信息）
  * @param {Number} year 
  * @param {Province} province 
@@ -288,7 +452,6 @@ async function updateProvinceCitiesCount(year, provinceCode, citiesCount) {
 async function saveProvinceCities(year, province, cities) {
   for await (const city of cities) {
     if (!await isRegionExist(City, year, city.code)) {
-      let isCityInThisProvince = cities.some(item => item.code === city.code)
       await City.create({ 
         year: year,
         name: city.name, 
@@ -301,23 +464,48 @@ async function saveProvinceCities(year, province, cities) {
 }
 
 /**
- * 打开页面，并且失败自动重试
- * @param {*} page 
- * @param {*} url 
- * @param {*} try_times 
+ * 保存指定城市的区信息（只更新不存在的区列表信息）
+ * @param {Number} year 
+ * @param {City} city 
+ * @param {Array} districts 
  */
-async function openPageWithAutoRetry(page, url, try_times = 0) {
-  try {
-    await page.goto(url, {waitUntil: 'load', timeout: 3000})
-  } catch (ex) {
-    if (try_times < 3) {
-      try_times += 1
-      page.waitFor(1000)
-      console.warn("Retry to open page: " + url)
-      return openPageWithAutoRetry(page, url, try_times)
+async function saveCityDistricts(year, city, districts) {
+  for (const district of districts) {
+    if (!await isRegionExist(District, year, district.code)) {
+      await District.create({ 
+        year: year,
+        name: district.name, 
+        code: district.code, 
+        url: district.url,
+        cityId: city.id
+      })
     }
-    throw ex
   }
+}
+
+/**
+ * 保存指定区的镇信息（只更新不存在的镇列表信息）
+ * @param {Number} year 
+ * @param {District} district 
+ * @param {Array} towns 
+ */
+async function saveDistrictTowns(year, district, towns) {
+  for (const town of towns) {
+    if (!await isRegionExist(Town, year, town.code)) {
+      await Town.create({ 
+        year: year,
+        name: town.name, 
+        code: town.code, 
+        districtId: district.id
+      })
+    }
+  }
+}
+
+function setPageProps(page) {
+  page.setCacheEnabled(true)
+  page.setJavaScriptEnabled(false)
+  page.setOfflineMode(false)
 }
 
 run()

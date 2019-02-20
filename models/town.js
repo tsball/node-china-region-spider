@@ -1,7 +1,7 @@
 const sequelize = require('../database.js')
 const Sequelize = require('sequelize')
 
-const Province = sequelize.define('provinces', {
+const Town = sequelize.define('towns', {
   year: {
     type: Sequelize.INTEGER,
     unique: 'compositeIndex'
@@ -13,15 +13,12 @@ const Province = sequelize.define('provinces', {
     type: Sequelize.STRING,
     unique: 'compositeIndex'
   },
-  url: {
-    type: Sequelize.STRING
-  },
-  citiesCount: {
+  districtId: {
     type: Sequelize.INTEGER
-  }
+  },
 });
 
 // force: true 如果表已经存在，将会丢弃表
-Province.sync({force: false})
+Town.sync({force: false})
 
-module.exports = Province
+module.exports = Town
