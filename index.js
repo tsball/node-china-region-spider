@@ -16,16 +16,29 @@ program
   .version('1.0.0')
   .usage('[options] <file ...>')
   .option('-h, --headless <boolean>', 'Headless', /^(y|n)$/i, 'n')
-  .option('-d, --depth <n>', 'Depth of data', parseInt, depthTown)
-  .option('-y, --year <n>', 'Data of specified year', parseInt, 2016)
-  .option('-c, --concurrency <n>', '并发数', parseInt, 3)
-  .option('-i, --interval <n>', '采集休息的间隙', parseInt, 500)
-  .option('-t, --timeout <n>', '超时时间', parseInt, 3000)
+  .option('-d, --depth <d>', 'Depth of data', myParseInt, depthTown)
+  .option('-y, --year <y>', 'Data of specified year', myParseInt, 2016)
+  .option('-c, --concurrency <c>', '并发数', myParseInt, 3)
+  .option('-i, --interval <i>', '采集休息的间隙', myParseInt, 500)
+  .option('-t, --timeout <t>', '超时时间', myParseInt, 3000)
   .parse(process.argv)
+
+function myParseInt(string, defaultValue) {
+  var int = parseInt(string, 10);
+
+  if (typeof int == 'number') {
+    return int;
+  } else {
+    return defaultValue;
+  }
+}
 
 console.log("Headless is: " + program.headless)
 console.log("Depth is: " + program.depth)
 console.log("Year is: " + program.year)
+console.log("Concurrency is: " + program.concurrency)
+console.log("Interval is: " + program.interval)
+console.log("Timeout is: " + program.timeout)
 const headless = program.headless === 'n'
 const year = program.year
 const interval = program.interval
