@@ -31,7 +31,7 @@ async function run() {
 
   const page = await browser.newPage()
 
-  await page.goto('http://www.stats.gov.cn/tjsj/tjbz/tjyqhdmhcxhfdm/2016/index.html', {waitUntil: 'load', timeout: 0})
+  await openPageWithAutoRetry(page, 'http://localhost:3000/admins/sign_in')
   
   // for province
   const provinces = await getProvinces(page)
@@ -297,6 +297,26 @@ async function saveProvinceCities(year, province, cities) {
         provinceId: province.id
       })
     }
+  }
+}
+
+/**
+ * 打开页面，并且失败自动重试
+ * @param {*} page 
+ * @param {*} url 
+ * @param {*} try_times 
+ */
+async function openPageWithAutoRetry(page, url, try_times = 0) {
+  try {
+    await page.goto(url, {waitUntil: 'load', timeout: 3000})
+  } catch (ex) {
+    if (try_times < 3) {
+      try_times += 1
+      page.waitFor(1000)
+      console.warn("Retry to open page: " + url)
+      return openPageWithAutoRetry(page, url, try_times)
+    }
+    throw ex
   }
 }
 
