@@ -26,7 +26,7 @@ program
 console.log("Headless is: " + program.headless)
 console.log("Depth is: " + program.depth)
 console.log("Year is: " + program.year)
-const headless = program.headless === 'y'
+const headless = program.headless === 'n'
 const year = program.year
 const interval = program.interval
 const timeout = program.timeout

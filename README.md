@@ -33,16 +33,16 @@ node index.js
 node index.js -y 2016
 
 // 获取某深度数据（支持 province, city, district, town）
-node index.js -d city
+node index.js -d 3
 ```
 
 ## 5. 参数设置
 
-参数 | 简写 | 值 | 描述  
----|---|---|---  
-headless | h | y/n | 是否显示界面  
-depth | d | 1/2/3/4 | 抓取深度(provice/city/district/town)  
-year | y | format as: 2016 | 抓取数据的年份  
-concurrency | c | 3 | 并发请求数  
-interval | i | 3000 | 采集数据休息的间隙(毫秒)  
-timeout | t | 3000 | 超时时间(毫秒)  
+参数 | 简写 | 值 | 默认值 | 描述  
+---|---|---|---|---  
+headless | h | y/n | n | 是否显示界面  
+depth | d | 1/2/3/4 | 4 | 抓取深度(provice/city/district/town)  
+year | y | format as: 2016 | 2016 | 抓取数据的年份  
+concurrency | c | 3 | 3 | 并发请求数  
+interval | i | 3000 | 500 | 采集数据休息的间隙(毫秒)  
+timeout | t | 3000 | 3000 | 超时时间(毫秒)  
