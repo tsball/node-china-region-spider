@@ -41,5 +41,8 @@ node index.js -d city
 参数 | 简写 | 值 | 描述  
 ---|---|---|---  
 headless | h | y/n | 是否显示界面  
-depth | d | province/city/district/town | 抓去深度  
+depth | d | 1/2/3/4 | 抓取深度(provice/city/district/town)  
 year | y | format as: 2016 | 抓取数据的年份  
+concurrency | c | 3 | 并发请求数  
+interval | i | 3000 | 采集数据休息的间隙(毫秒)  
+timeout | t | 3000 | 超时时间(毫秒)  
