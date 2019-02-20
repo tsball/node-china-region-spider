@@ -103,8 +103,6 @@ async function initDistricts(page, browser) {
     await mergePromises(cityPromises)
     page.waitFor(interval) // 等待，避免访问频繁被拦截
   }
-
-  return districts
 }
 
 async function initTowns(page, browser) {
