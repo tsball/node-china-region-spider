@@ -82,3 +82,57 @@ year | y | 数字 | 2016 | 采集指定年份的数据。[查看年份](http://w
 concurrency | c | 数字 | 3 | 并发请求数  
 interval | i | 毫秒 | 500 | 采集数据休息的间隙  
 timeout | t | 毫秒 | 3000 | 超时重试的时间  
+
+
+## 7. 数据结构
+
+数据 | 表名 | 字段
+---|---|---
+省 | provinces | id, name, code, year, citiesCount
+地级市 | cities | id, name, code, year, districtsCount, provinceId
+区/县 | districts | id, name, code, year, townsCount, cityId
+镇/街道办 | towns | id, name, code, year
+
+
+## 8. 数据查询
+
+### 8.1 查看区/县的变更
+#### 新一年移除的区/县
+以下是对比 2016年 与 2015年，查看已经删除的区/县。如果需要对比其他时间，直接更新脚本上的数字即可。
+```sql
+select p.year,
+    p.name as province_name,
+	c.name as city_name,
+	d1.name as district_name, 
+	d1.code as district_code,
+	d1.townsCount as towns_count,
+    'remove' as result
+from districts as d1
+inner join cities as c on c.id=d1.cityId
+inner join provinces as p on p.id=c.provinceId
+left join districts d2 on d2.year=2016 and d2.code=d1.code and d2.name=d1.name
+where d1.year=2015 and d2.code is null
+```
+
+对比结果：
+![Image](master/images/2015-2016_remove_districts.png)
+
+#### 新一年新增的区/县
+以下是对比 2016年 与 2015年，查看新增的区/县。
+```sql
+select p.year,
+    p.name as province_name,
+	c.name as city_name,
+	d1.name as district_name, 
+	d1.code as district_code,
+	d1.townsCount as towns_count,
+    'new' as result
+from districts as d1
+inner join cities as c on c.id=d1.cityId
+inner join provinces as p on p.id=c.provinceId
+left join districts d2 on d2.year=2015 and d2.code=d1.code and d2.name=d1.name
+where d1.year=2016 and d2.code is null
+```
+
+对比结果 (截图部分结果)：
+![Image](master/images/2015-2016_new_districts.png)

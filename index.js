@@ -39,7 +39,7 @@ console.log("Year is: " + program.year)
 console.log("Concurrency is: " + program.concurrency)
 console.log("Interval is: " + program.interval)
 console.log("Timeout is: " + program.timeout)
-const headless = program.headless === 'n'
+const headless = program.headless === 'y'
 const year = program.year
 const interval = program.interval
 const timeout = program.timeout
