@@ -8,6 +8,8 @@ node-china-region-spider 是一个基于 nodejs 技术，通过访问中国统�
 - [安装](#4-安装)
 - [运行](#5-运行)
 - [参数](#6-参数)
+- [数据结构](#7-数据结构)
+- [年度数据对比](#8-年度数据对比)
 
 
 ## 1. 程序特点
@@ -94,11 +96,13 @@ timeout | t | 毫秒 | 3000 | 超时重试的时间
 镇/街道办 | towns | id, name, code, year
 
 
-## 8. 数据查询
+## 8. 年度数据对比
 
-### 8.1 查看区/县的变更
-#### 新一年移除的区/县
-以下是对比 2016年 与 2015年，查看已经删除的区/县。如果需要对比其他时间，直接更新脚本上的数字即可。
+### 8.1 区(县)的变更
+以下是对比 2016年 与 2015年的数据。如果需要对比其他时间，直接更新下面 SQL 脚本上的数字即可。
+
+#### A. 已经删除的区(县)
+**SQL查询脚本** 
 ```sql
 select p.year,
     p.name as province_name,
@@ -114,11 +118,12 @@ left join districts d2 on d2.year=2016 and d2.code=d1.code and d2.name=d1.name
 where d1.year=2015 and d2.code is null
 ```
 
-对比结果：
-![Image](master/images/2015-2016_remove_districts.png)
+**结果输出**  
+![移除的区(县)](images/2015-2016_remove_districts.png)
 
-#### 新一年新增的区/县
-以下是对比 2016年 与 2015年，查看新增的区/县。
+
+#### B. 新增的区/县
+**SQL查询脚本**  
 ```sql
 select p.year,
     p.name as province_name,
@@ -134,5 +139,44 @@ left join districts d2 on d2.year=2015 and d2.code=d1.code and d2.name=d1.name
 where d1.year=2016 and d2.code is null
 ```
 
-对比结果 (截图部分结果)：
-![Image](master/images/2015-2016_new_districts.png)
+**结果输出**  
+
+![新增的区(县)](images/2015-2016_new_districts.png)
+
+#### C. 系统的地区版本升级
+假设某系统使用的是2015年的数据，需要升级到2016年数据，那么需要以下操作：  
+1. 找出关联了该区(县)的数据，找替代的区(县)重新关联到该数据
+2. 删除上面已移除的区(县)
+3. 增加上面新增的区(县)
+
+
+### 8.2 地级市的变更
+同理，脚本稍微调整
+
+**移除的城市**
+```sql
+select p.year,
+  p.name as province_name,
+  c1.name as city_name, 
+  c1.code as city_code,
+  c1.districtsCount as districts_count,
+  'remove' as result
+from cities c1
+inner join provinces as p on p.id=c1.provinceId
+left join cities c2 on c2.year=2016 and c2.code=c1.code and c2.name=c1.name
+where c1.year=2015 and c2.code is null
+```
+
+**新增的城市**
+```sql
+select p.year,
+  p.name as province_name,
+  c1.name as city_name, 
+  c1.code as city_code,
+  c1.districtsCount as districts_count,
+  'new' as result
+from cities c1
+inner join provinces as p on p.id=c1.provinceId
+left join cities c2 on c2.year=2015 and c2.code=c1.code and c2.name=c1.name
+where c1.year=2016 and c2.code is null
+```
