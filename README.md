@@ -1,12 +1,13 @@
 # 中国统计局省市区镇（街道）采集器
 node-china-region-spider 是一个基于 nodejs 技术，通过访问中国统计局网，获取省、地级市、区（县）、镇（街道）多层行政级别地区的名字 与 编号，并将数据保存到 SQLite 数据库。
 
-- [程序特点](#程序特点)
-- [数据来源](#数据来源)
-- [技术构成](#技术构成)
-- [安装](#安装)
-- [运行](#运行)
-- [参数](#参数)
+目录结构
+- [程序特点](#1.-程序特点)
+- [数据来源](#2.-数据来源)
+- [技术构成](#3.-技术构成)
+- [安装](#4.-安装)
+- [运行](#5.-运行)
+- [参数](#6.-参数)
 
 
 ## 1. 程序特点
@@ -46,13 +47,13 @@ type puppeteer_download_host = https://npm.taobao.org/mirrors
 PUPPETEER_DOWNLOAD_HOST=https://storage.googleapis.com.cnpmjs.org npm i puppeteer 
 ```
 
-## 3. 安装
+## 4. 安装
 ```sh
 # 安装所有的 js 依赖
 yarn
 ```
 
-## 4. 运行
+## 5. 运行
 ```sh
 # 获取最新的记录
 node index.js
@@ -64,7 +65,7 @@ node index.js -y 2016
 node index.js -d 3
 ```
 
-## 5. 参数
+## 6. 参数
 
 
 ```sh
