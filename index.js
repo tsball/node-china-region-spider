@@ -15,9 +15,9 @@ const depthTown = 4
 program
   .version('1.0.0')
   .usage('[options] <file ...>')
-  .option('-h, --headless <boolean>', 'Headless', /^(y|n)$/i, 'n')
-  .option('-d, --depth <d>', 'Depth of data', myParseInt, depthTown)
-  .option('-y, --year <y>', 'Data of specified year', myParseInt, 2016)
+  .option('-h, --headless <boolean>', '无头模式（没有界面）', /^(y|n)$/i, 'n')
+  .option('-d, --depth <d>', '采集指定行政级别深度的地区数据 (provice/city/district/town) ', myParseInt, depthDistrict)
+  .option('-y, --year <y>', '采集指定年份的数据', myParseInt, 2018)
   .option('-c, --concurrency <c>', '并发数', myParseInt, 3)
   .option('-i, --interval <i>', '采集休息的间隙', myParseInt, 500)
   .option('-t, --timeout <t>', '超时时间', myParseInt, 3000)
