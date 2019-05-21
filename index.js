@@ -170,6 +170,42 @@ async function getAndSaveDistrictTowns(browser, year, district) {
 }
 
 /**
+ * 获取并保存指定省份的城市列表
+ * @param {*} browser 
+ * @param {*} year 
+ * @param {*} province 
+ */
+async function getAndSaveProvinceCities(browser, year, province) {
+  const cities = await getCities(browser, province)
+  await saveProvinceCities(year, province, cities)
+  await updateProvinceCitiesCount(year, province.code, cities.length)
+}
+
+/**
+ * 获取并保存指定城市的区列表
+ * @param {*} browser 
+ * @param {*} year 
+ * @param {*} city 
+ */
+async function getAndSaveCitiyDistricts(browser, year, city) {
+  const districts = await getDistricts(browser, city)
+  await saveCityDistricts(year, city, districts)
+  await updateCityDistrictsCount(year, city.code, districts.length)
+}
+
+/**
+ * 获取并保存指定区的镇列表
+ * @param {*} browser 
+ * @param {*} year
+ * @param {*} district
+ */
+async function getAndSaveDistrictTowns(browser, year, district) {
+  const towns = await getTowns(browser, district)
+  await saveDistrictTowns(year, district, towns)
+  await updateDistrictTownsCount(year, district.code, towns.length)
+}
+
+/**
  * 获取省份信息
  * @param  {page} 省份所在的页面
  * @return {provinces} 所有省份   
@@ -232,20 +268,23 @@ async function getDistricts(browser, city) {
   await gotoPageWithAutoRetry(page, city.url)
   const districts = await page.evaluate(() => {
     // 区页面里一层tr含有code、name两个a标签
-    const districtTrElements = document.querySelectorAll('.countytr')
+    // 需处理无区的城市 例如：中山、东莞 （tr的class为towntr）
+    const townTrElements = document.querySelectorAll('.towntr')
+    const countyTrElements = document.querySelectorAll('.countytr')
+    const districtTrElements = countyTrElements.length > 0 ? countyTrElements : townTrElements
 
     const cityDistricts = Array.prototype.map.call(districtTrElements, districtTrElement => { 
       const districtTdElements = districtTrElement.querySelectorAll('td')
       let district = {}
       let linkElement = districtTdElements[1].querySelector('a')
-      let url = linkElement==null ? null : linkElement.href
+      let url = linkElement == null ? null : linkElement.href
       district.code = districtTdElements[0].innerText
       district.name = districtTdElements[1].innerText
       district.url = url
 
       return district
     })
-    return cityDistricts.filter(district => district.name != '市辖区')
+    return cityDistricts.filter(district => district.url || district.name != '市辖区')
   })
   
   page.close()
@@ -264,14 +303,18 @@ async function getTowns(browser, district) {
   setPageProps(page)
   await gotoPageWithAutoRetry(page, district.url)
   const towns = await page.evaluate(() => {
-    // 镇页面里一层tr含有code、name两个a标签
-    const townTrElements = document.querySelectorAll('.towntr')
+    // 镇页面里一层tr含有code、name两个a标签（tr的class为towntr）
+    // 需处理无区的城市 例如：中山、东莞 （去到街道层级的时候tr的class为villagetr）
+    const villageTrElements = document.querySelectorAll('.villagetr')
+    const streetTrElements = document.querySelectorAll('.towntr')
+    const townTrElements = streetTrElements.length > 0 ? streetTrElements : villageTrElements
+
     const districtTowns = Array.prototype.map.call(townTrElements, townTrElement => { 
-      const townLinkElements = townTrElement.querySelectorAll('a')
+      const townLinkElements = townTrElement.querySelectorAll('td')
       if(townLinkElements.length > 0){
         let town = {}
         town.code = townLinkElements[0].innerText
-        town.name = townLinkElements[1].innerText
+        town.name = townLinkElements[townLinkElements.length - 1].innerText
         return town
       }
       
