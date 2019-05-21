@@ -27,7 +27,9 @@ node-china-region-spider 是一个基于 nodejs 技术，通过访问中国统�
 
 ## 3. 技术构成
 - 数据采集：puppeteer  
-  Puppeteer 是一个通过 DevTools Protocol 控制 headless Chrome or Chromium 浏览器的高级 node 库。
+  Puppeteer 是一个通过 DevTools Protocol 控制 headless Chrome or Chromium 浏览器的高级 node 库。  
+  文档：https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md
+
 
 - 数据存储： SQLite 文件数据库  
   使用 [sequelize orm](https://github.com/demopark/sequelize-docs-Zh-CN/blob/master/getting-started.md) 进行数据库操作。
