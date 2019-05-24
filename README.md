@@ -39,10 +39,16 @@ node-china-region-spider 是一个基于 nodejs 技术，通过访问中国统�
 - nodejs 库依赖管理：Yarn  
   默认的源安装 puppeteer 经常因为网络问题导致失败，需要采用一下方式：
 
-方式一：修改了源 .npmrc
+方式一：修改了源 .npmrc(npm)
   
 ```
 type puppeteer_download_host = https://npm.taobao.org/mirrors
+```
+
+for yarn
+```
+// 生成 ~/.yarnrc 源配置
+$ yarn config set puppeteer_download_host https://npm.taobao.org/mirrors
 ```
 
 方式二：使用 npm 单独安装 puppeteer
