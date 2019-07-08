@@ -188,3 +188,11 @@ inner join provinces as p on p.id=c1.provinceId
 left join cities c2 on c2.year=2015 and c2.code=c1.code and c2.name=c1.name
 where c1.year=2016 and c2.code is null
 ```
+
+# 地图的行政区域信息更新更快（推荐使用）
+高德地图：获取行政区划数据
+https://lbs.amap.com/api/android-sdk/guide/map-data/district/
+
+百度地图：百度地图行政区划adcode映射表
+http://lbsyun.baidu.com/index.php?title=open/%E5%BC%80%E5%8F%91%E8%B5%84%E6%BA%90
+
