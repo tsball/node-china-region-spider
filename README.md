@@ -191,7 +191,7 @@ where c1.year=2016 and c2.code is null
 
 # 地图的行政区域信息更新更快（推荐使用）
 高德地图：获取行政区划数据
-https://lbs.amap.com/api/android-sdk/guide/map-data/district/
+https://lbs.amap.com/api/webservice/guide/api/district/?sug_index=0
 
 百度地图：百度地图行政区划adcode映射表
 http://lbsyun.baidu.com/index.php?title=open/%E5%BC%80%E5%8F%91%E8%B5%84%E6%BA%90
